@@ -10,6 +10,33 @@ fn main() -> Result<()> {
     repeating_xor_crack()
 }
 
+/// Solution for challenge 1-3.
+fn single_xor_crack() -> Result<()> {
+    const INPUT: &str = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
+
+    let input = util::hex_to_bytes(INPUT);
+
+    let mut best_dec = None;
+    let mut best_val = f32::MAX;
+
+    for key in 0_u8..255 {
+        let dec = util::xor_key(&input, [key]);
+        let val = util::score_text(&dec);
+
+        if val < best_val {
+            best_val = val;
+            best_dec = Some(dec);
+        }
+    }
+    
+    println!(
+        "{}",
+        String::from_utf8_lossy( &best_dec.unwrap() )
+    );
+
+    Ok(())
+}
+
 /// Solution for challenge 1-6.
 fn repeating_xor_crack() -> Result<()> {
     let input = fs::read_to_string("src/data/1-6.txt")?
@@ -32,7 +59,7 @@ fn repeating_xor_crack() -> Result<()> {
             
             (size, dist)
         })
-        .min_by(|(_, d1), (_, d2)| d1.partial_cmp(d2).unwrap() )
+        .min_by(|(_, d1), (_, d2)| d1.total_cmp(d2) )
         .map(|(s, _)| s)
         .expect("No candidate keysize found!");
 
