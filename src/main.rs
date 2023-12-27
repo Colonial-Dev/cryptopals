@@ -10,62 +10,65 @@ fn main() -> Result<()> {
     repeating_xor_crack()
 }
 
+/// Solution for challenge 1-6.
 fn repeating_xor_crack() -> Result<()> {
-    let input = fs::read_to_string("src/data/1-6.txt")?;
-    let input = input.lines().map(str::trim).collect::<String>();
+    let input = fs::read_to_string("src/data/1-6.txt")?
+        .lines()
+        .map(str::trim)
+        .collect::<String>();
+
     let input = util::b64_dec(input);
 
-    let mut distances: Vec<_> = (2..=40)
+    let candidate = (2..=40)
         .map(|size| {
-            let l = &input[0..size];
-            let r = &input[size..size * 2];
+            let mut dist = input
+                .chunks_exact(size)
+                .skip(1)
+                .zip( input.chunks_exact(size) )
+                .map(|(c, p)| util::bit_hamming(c, p) as f32 / size as f32)
+                .sum::<f32>();
 
-            (size, util::bit_hamming(l, r) / size)
+            dist /= input.chunks_exact(size).len() as f32;
+            
+            (size, dist)
         })
-        .collect();
+        .min_by(|(_, d1), (_, d2)| d1.partial_cmp(d2).unwrap() )
+        .map(|(s, _)| s)
+        .expect("No candidate keysize found!");
 
-    distances.sort_unstable_by_key(|(_, d)| *d);
+    let mut blocks = vec![Vec::new(); candidate];
 
-    println!("{distances:?}");
-    
-    distances
-        .iter()
-        .take(4)
-        .for_each(|(size, _)| {
-            let chunks: Vec<_> = input.chunks_exact(*size).collect();
-            let mut blocks = vec![vec![0_u8; *size]; *size];
+    for block in input.chunks_exact(candidate) {
+        for (i, b) in block.iter().enumerate() {
+            blocks[i].push(*b)
+        }
+    }
 
-            for (i, block) in blocks.iter_mut().enumerate() {
-                chunks
-                    .iter()
-                    .map(|c| c[i])
-                    .zip(block)
-                    .for_each(|(b, t)| *t = b);
+    let key: Vec<_> = blocks
+        .into_iter()
+        .map(|block| {
+            let mut best_key = None;
+            let mut best_val = f32::MAX;
+
+            for key in 0_u8..128 {
+                let dec = util::xor_key(&block, [key]);
+                let val = util::score_text(dec);
+
+                if val < best_val {
+                    best_val = val;
+                    best_key = Some(key);
+                }
             }
 
-            let key: Vec<_> = blocks
-                .into_iter()
-                .map(|block| {
-                    (0..=255)
-                        .map(|b| {
-                            let out = util::xor_key(&block, [b]);
-                            
-                            (
-                                util::score_text(&out),
-                                b
-                            )
-                        })
-                        .min_by(|a, b| {
-                            a.0.partial_cmp(&b.0).unwrap()
-                        })
-                        .map(|(_, b)| b)
-                        .unwrap()
-                })
-                .collect();
+            best_key.unwrap()
+        })
+        .collect();
+    
+    println!(
+        "(Decrypted with key '{}')\n\n{}",
+        String::from_utf8_lossy( &key.clone() ),
+        String::from_utf8_lossy( &util::xor_key(&input, key) )
+    );
 
-            let pt = util::xor_key(&input, key);
-            println!("{}", std::str::from_utf8(&pt).unwrap_or("<invalid UTF8>"))
-        });
-        
     Ok(())
 }

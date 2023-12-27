@@ -1,5 +1,6 @@
 // From https://en.wikipedia.org/wiki/Letter_frequency
-const FREQUENCIES: [f32; 26] = [
+const FREQUENCIES: [f32; 27] = [
+    // A -> Z
     8.2,
     1.5,
     2.8,
@@ -26,6 +27,8 @@ const FREQUENCIES: [f32; 26] = [
     0.15,
     2.0,
     0.074,
+    // Space
+    25.4
 ];
 
 pub fn score_text(input: impl AsRef<[u8]>) -> f32 {
@@ -38,6 +41,7 @@ pub fn score_text(input: impl AsRef<[u8]>) -> f32 {
         .for_each(|b| match b {
             b'A'..=b'Z' => occurrences[(b - b'A') as usize] += 1,
             b'a'..=b'z' => occurrences[(b - b'a') as usize] += 1,
+            b' ' => occurrences[26] += 1,
             _ => ()
         });
     
