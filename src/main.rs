@@ -7,7 +7,7 @@ use std::fs;
 use anyhow::Result;
 
 fn main() -> Result<()> {
-    repeating_xor_crack()
+    ecb_detect()
 }
 
 /// Solution for challenge 1-3.
@@ -96,6 +96,54 @@ fn repeating_xor_crack() -> Result<()> {
         String::from_utf8_lossy( &key.clone() ),
         String::from_utf8_lossy( &util::xor_key(&input, key) )
     );
+
+    Ok(())
+}
+
+fn ecb_decrypt_example() -> Result<()> {
+    use openssl::symm::{decrypt, Cipher};
+
+    let input = fs::read_to_string("src/data/1-7.txt")?
+        .lines()
+        .map(str::trim)
+        .collect::<String>();
+
+    let input = util::b64_dec(input);
+
+    let output = decrypt(
+        Cipher::aes_128_ecb(),
+        b"YELLOW SUBMARINE",
+        None,
+        &input
+    )?;
+
+    println!(
+        "{}",
+        String::from_utf8_lossy(&output)
+    );
+
+    Ok(())
+}
+
+fn ecb_detect() -> Result<()> {
+    use std::collections::HashSet;
+
+    let answer = fs::read_to_string("src/data/1-8.txt")?
+        .lines()
+        .map(util::hex_to_bytes)
+        .find(|ct| {
+            let mut set = HashSet::new();
+
+            for block in ct.chunks_exact(16) {
+                if set.contains(block) { return true; }
+                else { set.insert(block); }
+            }
+            
+            false
+        })
+        .expect("No ECB ciphertext detected!");
+
+    println!("{:x?}", answer);
 
     Ok(())
 }
